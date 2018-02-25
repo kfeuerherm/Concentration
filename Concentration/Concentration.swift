@@ -8,16 +8,31 @@
 
 import Foundation
 
-class Concentration
+struct Concentration
 {
     
-    var deck = [ Card ]()
+    private( set ) var deck = [ Card ]() // have to provide access but modification must be restricted to this class
     
-    var singleFaceUpIndex : Int?
-
-    init( pairCount : Int )
+    private var singleFaceUpIndex : Int?
     {
-        for i in 1 ... pairCount // loop identifier not used
+        get
+        {
+            return deck.indices.filter { deck[ $0 ].isFaceUp }.single
+        }
+        set
+        {
+            for eachIndex in deck.indices
+            {
+                deck[ eachIndex ].isFaceUp = ( eachIndex == newValue )
+            }
+        }
+    }
+
+    init( pairCount : Int ) // inits must be accessible
+    {
+        assert( pairCount > 0, "Concentration.init( pairCount: \(pairCount) )-- must be positive" )
+
+        for _ in 1 ... pairCount // loop identifier not used
         {
             let newCard = Card()
             deck.append( newCard )
@@ -25,29 +40,30 @@ class Concentration
         }
     }
     
-    func chooseCard( at chosenIndex: Int )
+    mutating func chooseCard( at chosenIndex : Int ) // fundamental API
     {
+        assert( deck.indices.contains( chosenIndex ), "Concentration.chooseCard( at : \(chosenIndex) )-- index not found" )
+        
+        // disregard a previously matched chosen card as there's nothing to do
         if !deck[ chosenIndex ].isMatched
         {
+            // when only one card is face up and it's not this one, check for match
             if let matchIndex = singleFaceUpIndex, matchIndex != chosenIndex
             {
-                // check whether cards match
-                if deck[ matchIndex ].id == deck[ chosenIndex ].id
+                // when ids match, we have a card match
+                if deck[ matchIndex ] == deck[ chosenIndex ]
                 {
                     deck[ matchIndex ].isMatched = true
                     deck[ chosenIndex ].isMatched = true
                 }
+                // either way, this card is now face up
                 deck[ chosenIndex ].isFaceUp = true
-                singleFaceUpIndex = nil
             }
+            // 0 or 2 cards face up, or no match
             else
             {
-                // no cards match or 2 cards face up
-                for eachIndex in deck.indices
-                {
-                    deck[ eachIndex ].isFaceUp = false
-                }
-                deck[ chosenIndex ].isFaceUp = true
+                // set the choseen card to be the only face up card
+                // (which implicitly turns all other cards down as it's a computed property)
                 singleFaceUpIndex = chosenIndex
             }
         }

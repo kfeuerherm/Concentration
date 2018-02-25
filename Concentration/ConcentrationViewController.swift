@@ -8,7 +8,7 @@
 
 import UIKit
 
-class ConcentrationViewController: UIViewController
+class ConcentrationViewController : UIViewController
 {
     
     // lazy: defer initialization until first access; this allows us to
@@ -17,34 +17,59 @@ class ConcentrationViewController: UIViewController
     // + 1:  ensure the game will work in the unlikely event that there is
     //       an odd number of buttons (though in fact the odd card will not
     //       be matchable)
-    lazy var game         = Concentration( pairCount : ( cardButtons.count + 1 ) / 2 )
-    var emojiChoices = [ "👻", "🎃", "💀", "😈", "☠️", "👻", "🎃", "💀", "😈", "☠️", "👻", "🎃", "💀", "😈", "☠️", "👻", "🎃", "💀", "😈", "☠️" ]
-    var emojiDict = [ Int : String ]()
     
-    var flipCount    = 0 { didSet { flipCountLabel.text = "\(flipCount)" } }
-    
-    @IBOutlet weak var flipCountLabel : UILabel!
-    
-    @IBOutlet var cardButtons : [ UIButton ]!
-    
-    @IBAction func touchCard( _ sender : UIButton )
+    private( set ) var flipCount = 0 // outside access permitted, but must protect against alteration
     {
+        didSet
+        {
+            updateFlipCountLabel()
+        }
+    }
+    
+    @IBOutlet private weak var flipCountLabel : UILabel!
+    {
+        didSet
+        {
+            updateFlipCountLabel()
+        }
+    }
+
+    private func updateFlipCountLabel()
+    {
+        let attributes : [ NSAttributedStringKey : Any ] = [ .strokeWidth : 5.0, .strokeColor : #colorLiteral(red: 1, green: 0.5763723254, blue: 0, alpha: 1) ]
+        let attributedString = NSAttributedString( string : "\(flipCount)", attributes : attributes )
+        flipCountLabel.attributedText = attributedString
+    }
+    
+    @IBOutlet private var cardButtons : [ UIButton ]!
+    
+    var pairCount : Int // allow outsiders to read this, no need for secrecy
+    {
+        assert(cardButtons.count % 2 == 0, "Button count is \(cardButtons.count)--- should be even" )
         
+        return cardButtons.count / 2
+    }
+    
+    private lazy var game = Concentration( pairCount : pairCount ) // private since outsiders cannot determine button/pair count
+    
+    @IBAction private func touchCard( _ sender : UIButton )
+    {
         if let cardIndex = cardButtons.index( of : sender )
         {
             game.chooseCard( at: cardIndex )
             refreshView()
-            flipCount += 1
+            if !game.deck[ cardIndex ].isMatched
+            {
+                flipCount += 1
+            }
         }
         else
         {
             // covers the eventuality that a button wasn't linked up
         }
-
     }
     
-    
-    func refreshView()
+    private func refreshView()
     {
         for index in cardButtons.indices
         {
@@ -63,15 +88,17 @@ class ConcentrationViewController: UIViewController
         }
     }
     
-    func toEmoji( for card : Card ) -> String
-    {
-        if emojiDict[ card.id ] == nil, emojiChoices.count > 0
-        {
-            let randomIndex = Int( arc4random_uniform( UInt32( emojiChoices.count ) ) )
-            emojiDict[ card.id ] = emojiChoices.remove( at : randomIndex )
-        }
-        return emojiDict[ card.id ] ?? "?"
-    }
+    private var emojiChoices     = "😈👹👺💩👻💀☠️👽👾🤖🎃😺🐴🦄🐝🐛🦋🐌🐞🦀"
     
+    private var emojiUsed        = [ Card : String ]()
+    
+    private func toEmoji( for card : Card ) -> String
+    {
+        if emojiUsed[ card ] == nil, emojiChoices.count > 0
+        {
+            let randomStringIndex = emojiChoices.index( emojiChoices.startIndex, offsetBy : emojiChoices.count.arc4random )
+            emojiUsed[ card ] = String( emojiChoices.remove( at : randomStringIndex ) )
+        }
+        return emojiUsed[ card ] ?? "?"
+    }
 }
-
